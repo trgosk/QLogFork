@@ -491,7 +491,7 @@ OTHER_FILES += \
     res/qlog.rc \
     res/qlog.desktop \
     res/qlog.1 \
-    res/io.github.foldynl.QLog.metainfo.xml
+    res/io.github.trgosk.QLogFork.metainfo.xml
 
 TRANSLATIONS = i18n/qlog_cs.ts \
                i18n/qlog_de.ts \
@@ -598,7 +598,7 @@ unix:!macx {
    icon.files += res/$${TARGET}.png
 
    metainfo.path = $$PREFIX/share/metainfo/
-   metainfo.files += res/io.github.foldynl.QLog.metainfo.xml
+   metainfo.files += res/io.github.trgosk.QLogFork.metainfo.xml
 
    INSTALLS += target desktop icon metainfo manpage
 

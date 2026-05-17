@@ -362,7 +362,7 @@ int main(int argc, char* argv[])
     }
 
     app.setOrganizationName("hamradio");
-    app.setApplicationName("QLog" + ((environment.isEmpty()) ? "" : environment.prepend("-")));
+    app.setApplicationName("QLogFork" + ((environment.isEmpty()) ? "" : environment.prepend("-")));
 
     /* If the Style parameter is not present then use a default - Fusion style */
     if ( !stylePresent )

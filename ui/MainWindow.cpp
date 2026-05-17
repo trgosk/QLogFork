@@ -1924,7 +1924,7 @@ void MainWindow::showAbout()
 {
     FCT_IDENTIFICATION;
 
-    QString aboutText = tr("<h1>QLog %1</h1>"
+    QString aboutText = tr("<h1>QLogFork %1</h1>"
                            "<p>&copy; 2019 Thomas Gatzweiler DL2IC<br/>"
                            "&copy; 2021-2026 Ladislav Foldyna OK1MLG<br/>"
                            "&copy; 2025-2026 Michael Morgan AA5SH<br/>"

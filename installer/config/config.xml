@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Installer>
-    <Name>QLog</Name>
+    <Name>QLogFork</Name>
     <Version>0.50.0</Version>
-    <Title>QLog</Title>
-    <Publisher>OK1MLG</Publisher>
-    <StartMenuDir>QLog</StartMenuDir>
-    <TargetDir>@ApplicationsDir@/QLog</TargetDir>
+    <Title>QLogFork</Title>
+    <Publisher>trgosk</Publisher>
+    <StartMenuDir>QLogFork</StartMenuDir>
+    <TargetDir>@ApplicationsDir@/QLogFork</TargetDir>
 </Installer>

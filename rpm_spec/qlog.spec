@@ -1,7 +1,7 @@
 %define REPO_VERSION %(echo $REPO_VERSION)
 
 Summary: Qt Logging program for hamradio operators
-Name: QLog
+Name: QLogFork
 Version: %{REPO_VERSION}
 Release: 1%{?dist}
 License: GPLv3

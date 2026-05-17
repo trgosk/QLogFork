@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Package>
-    <DisplayName>QLog</DisplayName>
-    <Description>The QLog main application.</Description>
+    <DisplayName>QLogFork</DisplayName>
+    <Description>The QLogFork main application.</Description>
     <Version>0.50.0-1</Version>
     <ReleaseDate>2026-04-26</ReleaseDate>
     <Default>true</Default>

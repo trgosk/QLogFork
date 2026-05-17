@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>io.github.foldynl.QLog</id>
+  <id>io.github.trgosk.QLogFork</id>
   <launchable type="desktop-id">qlog.desktop</launchable>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
-  <name>QLog</name>
-  <developer_name>Ladislav Foldyna</developer_name>
-  <developer id="io.github.foldynl">
-    <name>Ladislav Foldyna</name>
+  <name>QLogFork</name>
+  <developer_name>trgosk</developer_name>
+  <developer id="io.github.trgosk">
+    <name>trgosk</name>
   </developer>
   <summary>Amateur radio logbook</summary>
   <description>
     <p>
-      QLog is an Amateur Radio logging application for Linux, Windows. It is based on the Qt framework and uses SQLite as database backend.
-      QLog aims to be as simple as possible, but to provide everything the operator expects from the log to be. This log is not currently focused on contests.
+      QLogFork is an Amateur Radio logging application for Linux, Windows. It is based on the Qt framework and uses SQLite as database backend.
+      QLogFork aims to be as simple as possible, but to provide everything the operator expects from the log to be. This log is not currently focused on contests.
     </p>
     <p>Features:</p>
     <ul>
@@ -40,16 +40,13 @@
   </description>
   <screenshots>
     <screenshot type="default">
-      <caption>The QLog main window</caption>
+      <caption>The QLogFork main window</caption>
       <image type="source">https://foldynl.github.io/QLog/screens/qlog_main.png</image>
     </screenshot>
   </screenshots>
-  <url type="homepage">https://github.com/foldynl/QLog</url>
-  <url type="bugtracker">https://github.com/foldynl/QLog/issues</url>
-  <url type="help">https://github.com/foldynl/QLog/wiki</url>
-  <url type="contact">https://github.com/foldynl</url>
-  <url type="vcs-browser">https://github.com/foldynl/QLog</url>
-  <url type="contribute">https://github.com/foldynl/QLog/blob/master/CONTRIBUTING.md</url>
+  <url type="homepage">https://github.com/trgosk/QLogFork</url>
+  <url type="bugtracker">https://github.com/trgosk/QLogFork/issues</url>
+  <url type="vcs-browser">https://github.com/trgosk/QLogFork</url>
   <releases>
     <release version="0.50.0" date="2026-04-26">
       <description>
