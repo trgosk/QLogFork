@@ -10,7 +10,7 @@ For documentation, installation instructions, features, and support please refer
 
 ## Extra features in this fork
 
-- *(more coming)*
+- Fix ADIF import losing diacritics (UTF-8 instead of Latin-1) [PR#996](https://github.com/foldynl/QLog/pull/996)
 
 ---
 
