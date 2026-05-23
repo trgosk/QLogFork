@@ -397,6 +397,9 @@ void QRZUploader::uploadContact(const QSqlRecord &record)
                                                                             : getLogbookAPIKey(getInternalAPIUsername());
     actionInsert(logbookAPIKey, data, "REPLACE");
     currentReply->setProperty("contactID", record.value("id"));
+    currentReply->setProperty("dxcall", record.value("callsign"));
+    currentReply->setProperty("qsoStart", record.value("start_time"));
+    currentReply->setProperty("qsoBand", record.value("band"));
 }
 
 void QRZUploader::uploadQSOList(const QList<QSqlRecord>& qsos, const QVariantMap &)
@@ -520,7 +523,32 @@ void QRZUploader::processReply(QNetworkReply *reply)
         }
         else
         {
-            emit uploadError(data.value("REASON", tr("General Error")));
+            QString errorMsg;
+            const QString &dxcall = reply->property("dxcall").toString();
+            const QDateTime &qsoStart = reply->property("qsoStart").toDateTime();
+            const QString &qsoBand = reply->property("qsoBand").toString();
+            if ( !dxcall.isEmpty() )
+            {
+                errorMsg += QStringLiteral("<b>") + tr("QSO") + QStringLiteral(":</b> ")
+                         + dxcall.toHtmlEscaped()
+                         + QStringLiteral(" &middot; ")
+                         + qsoStart.toUTC().toString("yyyy-MM-dd hh:mm 'UTC'")
+                         + QStringLiteral(" &middot; ")
+                         + qsoBand.toHtmlEscaped()
+                         + QStringLiteral("<br><br>");
+            }
+            errorMsg += data.value("REASON", tr("General Error"));
+            const QString &extended = data.value("EXTENDED").trimmed();
+            if ( !extended.isEmpty() )
+            {
+                // QRZ often hides the real cause (bad freq, missing field, etc.)
+                // behind a generic REASON and puts the specifics in EXTENDED.
+                errorMsg += QStringLiteral("<br><br><b>")
+                         + tr("Details")
+                         + QStringLiteral(":</b><br>")
+                         + extended.toHtmlEscaped();
+            }
+            emit uploadError(errorMsg);
             cancelUpload = false;
         }
     }
