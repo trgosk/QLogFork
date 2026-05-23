@@ -11,6 +11,7 @@ For documentation, installation instructions, features, and support please refer
 ## Extra features in this fork
 
 - Fix ADIF import losing diacritics (UTF-8 instead of Latin-1) [PR#996](https://github.com/foldynl/QLog/pull/996)
+- CLI backup: `--backup-db` flag to pack data & settings without the GUI — see [docs/cli-backup.md](docs/cli-backup.md)
 
 ---
 

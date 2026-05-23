@@ -9,6 +9,7 @@
 #include <QDebug>
 #include <QSplashScreen>
 #include <QTemporaryDir>
+#include <QTemporaryFile>
 #include <QStyleFactory>
 #include <QThread>
 
@@ -26,6 +27,9 @@
 #include "data/Data.h"
 #include "service/GenericCallbook.h"
 #include "core/LogDatabase.h"
+#include "core/CredentialStore.h"
+#include "core/FileCompressor.h"
+#include "core/LogParam.h"
 
 MODULE_IDENTIFICATION("qlog.core.main");
 
@@ -337,6 +341,12 @@ int main(int argc, char* argv[])
                 QCoreApplication::translate("main", "Process pending database import (internal use)"));
     QCommandLineOption forceLOVUpdate(QStringList() << "f" << "force-update",
                 QCoreApplication::translate("main", "Force update of all value lists (DXCC, SATs, etc.)"));
+    QCommandLineOption backupDb("backup-db",
+                QCoreApplication::translate("main", "Pack data && settings to <file> (same as File > Pack Data && Settings). Output file will have .dbe extension."),
+                QCoreApplication::translate("main", "file"));
+    QCommandLineOption backupPassword("backup-password",
+                QCoreApplication::translate("main", "Password used to encrypt credentials in the backup. If omitted, an empty password is used."),
+                QCoreApplication::translate("main", "password"));
 
     parser.addOption(environmentName);
     parser.addOption(translationFilename);
@@ -344,6 +354,8 @@ int main(int argc, char* argv[])
     parser.addOption(debugFile);
     parser.addOption(importPending);
     parser.addOption(forceLOVUpdate);
+    parser.addOption(backupDb);
+    parser.addOption(backupPassword);
 
     parser.process(app);
     QString environment = parser.value(environmentName);
@@ -352,6 +364,9 @@ int main(int argc, char* argv[])
     setLogToFile(parser.isSet(debugFile));
     bool isImportPending = parser.isSet(importPending);
     bool isForceLOVUpdate = parser.isSet(forceLOVUpdate);
+    bool isBackupMode = parser.isSet(backupDb);
+    QString backupDestPath = isBackupMode ? parser.value(backupDb) : QString();
+    QString backupPassphrase = parser.isSet(backupPassword) ? parser.value(backupPassword) : QString();
 
     // If started with --import-pending, wait a bit for the previous instance to fully terminate
     if ( isImportPending )
@@ -411,8 +426,11 @@ int main(int argc, char* argv[])
     QPixmap pixmap(":/res/qlog.png");
     SplashScreen splash(pixmap);
 
-    splash.show();
-    splash.ensureFirstPaint();
+    if ( !isBackupMode )
+    {
+        splash.show();
+        splash.ensureFirstPaint();
+    }
 
     createDataDirectory();
 
@@ -448,6 +466,61 @@ int main(int argc, char* argv[])
             QMessageBox::critical(nullptr, QMessageBox::tr("QLog Error"),
                                   QMessageBox::tr("Could not connect to database."));
             return 1;
+        }
+
+        if ( isBackupMode )
+        {
+            // Ensure .dbe extension
+            if ( !backupDestPath.endsWith(".dbe", Qt::CaseInsensitive) )
+                backupDestPath.append(".dbe");
+
+            // Encrypt credentials into a transient LogParam entry
+            if ( !CredentialStore::instance()->exportPasswords(backupPassphrase) )
+            {
+                fprintf(stderr, "backup-db: failed to encrypt credentials.\n");
+                return 1;
+            }
+
+            // Atomically copy the live database to a temp file
+            QTemporaryFile tempFile;
+            if ( !tempFile.open() )
+            {
+                LogParam::removeEncryptedPasswords();
+                LogParam::removeSourcePlatform();
+                fprintf(stderr, "backup-db: failed to create temporary file.\n");
+                return 1;
+            }
+            const QString tempPath = tempFile.fileName();
+            tempFile.close();
+
+            bool ok = LogDatabase::instance()->atomicCopy(tempPath);
+
+            // Always clean up the transient credential entry
+            LogParam::removeEncryptedPasswords();
+            LogParam::removeSourcePlatform();
+
+            if ( !ok )
+            {
+                QFile::remove(tempPath);
+                fprintf(stderr, "backup-db: failed to copy database.\n");
+                return 1;
+            }
+
+            // Compress temp file to destination
+            ok = FileCompressor::gzipFile(tempPath, backupDestPath);
+            QFile::remove(tempPath);
+
+            if ( ok )
+            {
+                fprintf(stdout, "Database successfully packed to: %s\n", qPrintable(backupDestPath));
+                return 0;
+            }
+            else
+            {
+                QFile::remove(backupDestPath);
+                fprintf(stderr, "backup-db: failed to compress database.\n");
+                return 1;
+            }
         }
 
         splash.showMessage(QObject::tr("Backuping Database"), Qt::AlignBottom|Qt::AlignCenter);
