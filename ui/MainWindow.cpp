@@ -971,6 +971,21 @@ void MainWindow::themeInit(int mode)
 
     LogParam::setMainWindowDarkMode(mode);
 
+    // setLayoutGeometry() reads dark_mode from the active layout profile
+    // when one is selected, so the global setMainWindowDarkMode above is
+    // effectively ignored across restarts. Keep the active profile in sync.
+    MainLayoutProfilesManager *layoutMgr = MainLayoutProfilesManager::instance();
+    MainLayoutProfile activeProfile = layoutMgr->getCurProfile1();
+    if ( !activeProfile.profileName.isEmpty()
+         && activeProfile.darkMode != mode )
+    {
+        activeProfile.darkMode = mode;
+        layoutMgr->blockSignals(true);
+        layoutMgr->addProfile(activeProfile.profileName, activeProfile);
+        layoutMgr->save();
+        layoutMgr->blockSignals(false);
+    }
+
     bool isDark = false;
     switch (mode) {
     case 0:
