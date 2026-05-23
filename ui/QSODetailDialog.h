@@ -8,6 +8,7 @@
 #include <QPointer>
 #include <QCompleter>
 #include <QWebChannel>
+#include <QEvent>
 
 #include "models/LogbookModel.h"
 #include "data/Gridsquare.h"
@@ -96,7 +97,14 @@ private slots:
                          QMap<QString, ClubStatusQuery::ClubInfo> data);
     void updateCountyCompleter(int dxcc);
 
+    bool eventFilter(QObject *watched, QEvent *event) override;
+
 private:
+    struct ValidationFix {
+        QWidget *targetWidget;
+        QVariant expectedValue;
+    };
+
     /* It is modified logbook model when only basic
      * validation are done. The extended validations
      * are done in Form itself */
@@ -119,6 +127,10 @@ private:
     };
 
     bool highlightInvalid(QLabel *, bool, const QString&);
+    bool highlightInvalid(QLabel *, bool, const QString&,
+                          QWidget *targetWidget,
+                          const QVariant &expectedValue);
+    void applyValidationFixes(QLabel *label);
     void blockMappedWidgetSignals(bool);
     void drawDXOnMap(const QString &label, const Gridsquare &dxGrid);
     void drawMyQTHOnMap(const QString &label, const Gridsquare &myGrid);
@@ -159,6 +171,8 @@ private:
     QWebChannel channel;
     MapWebChannelHandler layerControlHandler;
     LogLocale locale;
+    QMap<QLabel*, QList<ValidationFix>> validationFixes;
+    bool inEditMode;
 };
 
 #endif // QLOG_UI_QSODETAILDIALOG_H

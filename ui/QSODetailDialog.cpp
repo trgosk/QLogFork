@@ -6,6 +6,8 @@
 #include <QDesktopServices>
 #include <QMessageBox>
 #include <QMovie>
+#include <QComboBox>
+#include <QDoubleSpinBox>
 
 #include "QSODetailDialog.h"
 #include "ui_QSODetailDialog.h"
@@ -36,11 +38,22 @@ QSODetailDialog::QSODetailDialog(const QSqlRecord &qso,
     editedRecord(new QSqlRecord(qso)),
     isMainPageLoaded(false),
     main_page(new WebEnginePage(this)),
-    layerControlHandler("qsodetail", parent)
+    layerControlHandler("qsodetail", parent),
+    inEditMode(false)
 {
     FCT_IDENTIFICATION;
 
     ui->setupUi(this);
+
+    /* Install event filter on all QLabels for double-click-to-fix */
+    const QList<QLabel *> &labels = findChildren<QLabel *>();
+    for ( QLabel *label : labels )
+    {
+        if ( label )
+        {
+            label->installEventFilter(this);
+        }
+    }
 
     /* model setting */
     model->setFilter(QString("id = '%1'").arg(qso.value("id").toString()));
@@ -541,6 +554,8 @@ void QSODetailDialog::setReadOnlyMode(bool inReadOnly)
 
     qCDebug(function_parameters) << inReadOnly;
 
+    inEditMode = !inReadOnly;
+
     for ( int i = 0; i < LogbookModel::COLUMN_LAST_ELEMENT; i++)
     {
         QWidget *widget = mapper->mappedWidgetAt(i);
@@ -852,8 +867,14 @@ bool QSODetailDialog::doValidation()
 
     for ( QLabel *label : list )
     {
-        if ( label ) label->setToolTip(QString());
+        if ( label )
+        {
+            label->setToolTip(QString());
+            label->setCursor(Qt::ArrowCursor);
+        }
     }
+
+    validationFixes.clear();
 
     allValid &= highlightInvalid(ui->callsignLabel,
                                  ui->callsignEdit->text().isEmpty(),
@@ -872,7 +893,8 @@ bool QSODetailDialog::doValidation()
 
     allValid &= highlightInvalid(ui->bandLabel,
                                  ui->freqTXEdit->value() != 0.0 && ui->bandTXCombo->currentText() != bandTXString,
-                                 tr("TX Band should be ") + "<b>" + (bandTXString.isEmpty() ? "OOB" : bandTXString) + "</b>");
+                                 tr("TX Band should be ") + "<b>" + (bandTXString.isEmpty() ? "OOB" : bandTXString) + "</b>",
+                                 ui->bandTXCombo, bandTXString);
 
     allValid &= highlightInvalid(ui->bandLabel,
                                  ui->freqTXEdit->value() == 0.0 && ui->bandTXCombo->currentIndex() == 0,
@@ -883,7 +905,8 @@ bool QSODetailDialog::doValidation()
 
     allValid &= highlightInvalid(ui->bandLabel,
                                  ui->freqRXEdit->value() != 0.0 && ui->bandRXCombo->currentText() != bandRXString,
-                                 tr("RX Band should be ") + "<b>" + (bandRXString.isEmpty() ? "OOB" : bandRXString) + "</b>");
+                                 tr("RX Band should be ") + "<b>" + (bandRXString.isEmpty() ? "OOB" : bandRXString) + "</b>",
+                                 ui->bandRXCombo, bandRXString);
 
     allValid &= highlightInvalid(ui->gridLabel,
                                  !ui->gridEdit->text().isEmpty() && !ui->gridEdit->hasAcceptableInput(),
@@ -893,19 +916,23 @@ bool QSODetailDialog::doValidation()
 
     allValid &= highlightInvalid(ui->countryLabel,
                                  dxccEntity.dxcc && ui->countryBox->currentText() != QCoreApplication::translate("DBStrings", dxccEntity.country.toUtf8().constData()),
-                                 tr("Based on callsign, DXCC Country is different from the entered value - expecting ") + "<b> " + QCoreApplication::translate("DBStrings", dxccEntity.country.toUtf8().constData()) + "</b>");
+                                 tr("Based on callsign, DXCC Country is different from the entered value - expecting ") + "<b> " + QCoreApplication::translate("DBStrings", dxccEntity.country.toUtf8().constData()) + "</b>",
+                                 ui->countryBox, QCoreApplication::translate("DBStrings", dxccEntity.country.toUtf8().constData()));
 
     allValid &= highlightInvalid(ui->contLabel,
                                  dxccEntity.dxcc && ui->contEdit->currentText() != dxccEntity.cont,
-                                 tr("Based on callsign, DXCC Continent is different from the entered value - expecting ") + "<b> " + dxccEntity.cont + "</b>");
+                                 tr("Based on callsign, DXCC Continent is different from the entered value - expecting ") + "<b> " + dxccEntity.cont + "</b>",
+                                 ui->contEdit, dxccEntity.cont);
 
     allValid &= highlightInvalid(ui->ituLabel,
                                  dxccEntity.dxcc && ui->ituEdit->text() != QString::number(dxccEntity.ituz),
-                                 tr("Based on callsign, DXCC ITU is different from the entered value - expecting ") + "<b> " + QString::number(dxccEntity.ituz) + "</b>");
+                                 tr("Based on callsign, DXCC ITU is different from the entered value - expecting ") + "<b> " + QString::number(dxccEntity.ituz) + "</b>",
+                                 ui->ituEdit, QString::number(dxccEntity.ituz));
 
     allValid &= highlightInvalid(ui->cqLabel,
                                  dxccEntity.dxcc && ui->cqEdit->text() != QString::number(dxccEntity.cqz),
-                                 tr("Based on callsign, DXCC CQZ is different from the entered value - expecting ") + "<b> " + QString::number(dxccEntity.cqz) + "</b>");
+                                 tr("Based on callsign, DXCC CQZ is different from the entered value - expecting ") + "<b> " + QString::number(dxccEntity.cqz) + "</b>",
+                                 ui->cqEdit, QString::number(dxccEntity.cqz));
 
     allValid &= highlightInvalid(ui->vuccLabel,
                                  !ui->vuccEdit->text().isEmpty() && !ui->vuccEdit->hasAcceptableInput(),
@@ -915,7 +942,8 @@ bool QSODetailDialog::doValidation()
                                                                                                          : bandTX.satDesignator + bandRX.satDesignator;
     allValid &= highlightInvalid(ui->satModeLabel,
                                  ui->satModeEdit->currentIndex() > 0 && Data::instance()->satModeTextToID(ui->satModeEdit->currentText()) != expectedSatMode,
-                                 tr("Based on Frequencies, Sat Mode should be ") + "<b>" + ( (expectedSatMode.isEmpty()) ? tr("blank") : expectedSatMode) + "</b>");
+                                 tr("Based on Frequencies, Sat Mode should be ") + "<b>" + ( (expectedSatMode.isEmpty()) ? tr("blank") : expectedSatMode) + "</b>",
+                                 ui->satModeEdit, expectedSatMode);
 
     allValid &= highlightInvalid(ui->satNameLabel,
                                  Data::instance()->propagationModeTextToID(ui->propagationModeEdit->currentText()) == "SAT" && ui->satNameEdit->text().isEmpty(),
@@ -941,15 +969,18 @@ bool QSODetailDialog::doValidation()
 
     allValid &= highlightInvalid(ui->myITULabel,
                                  myDxccEntity.dxcc && ui->myITUEdit->text() != QString::number(myDxccEntity.ituz),
-                                 tr("Based on own callsign, own DXCC ITU is different from the entered value - expecting ") + "<b> " + QString::number(myDxccEntity.ituz) + "</b>");
+                                 tr("Based on own callsign, own DXCC ITU is different from the entered value - expecting ") + "<b> " + QString::number(myDxccEntity.ituz) + "</b>",
+                                 ui->myITUEdit, QString::number(myDxccEntity.ituz));
 
     allValid &= highlightInvalid(ui->myCQLabel,
                                  myDxccEntity.dxcc && ui->myCQEdit->text() != QString::number(myDxccEntity.cqz),
-                                 tr("Based on own callsign, own DXCC CQZ is different from the entered value - expecting ") + "<b> " + QString::number(myDxccEntity.cqz) + "</b>");
+                                 tr("Based on own callsign, own DXCC CQZ is different from the entered value - expecting ") + "<b> " + QString::number(myDxccEntity.cqz) + "</b>",
+                                 ui->myCQEdit, QString::number(myDxccEntity.cqz));
 
     allValid &= highlightInvalid(ui->myCountryLabel,
                                  myDxccEntity.dxcc && ui->myCountryBox->currentText() != QCoreApplication::translate("DBStrings", myDxccEntity.country.toUtf8().constData()),
-                                 tr("Based on own callsign, own DXCC Country is different from the entered value - expecting ") + "<b> " + QCoreApplication::translate("DBStrings", myDxccEntity.country.toUtf8().constData()) + "</b>");
+                                 tr("Based on own callsign, own DXCC Country is different from the entered value - expecting ") + "<b> " + QCoreApplication::translate("DBStrings", myDxccEntity.country.toUtf8().constData()) + "</b>",
+                                 ui->myCountryBox, QCoreApplication::translate("DBStrings", myDxccEntity.country.toUtf8().constData()));
 
     SOTAEntity sotaInfo;
     POTAEntity potaInfo;
@@ -968,7 +999,8 @@ bool QSODetailDialog::doValidation()
                                  sotaInfo.summitCode.toUpper() == ui->sotaEdit->text().toUpper()
                                  && !sotaInfo.summitName.isEmpty()
                                  && ui->qthEdit->text().toUpper() != sotaInfo.summitName.toUpper(),
-                                 tr("Based on SOTA Summit, QTH does not match SOTA Summit Name - expecting ")+ "<b> " + sotaInfo.summitName + "</b>");
+                                 tr("Based on SOTA Summit, QTH does not match SOTA Summit Name - expecting ")+ "<b> " + sotaInfo.summitName + "</b>",
+                                 ui->qthEdit, sotaInfo.summitName);
 
     Gridsquare SOTAGrid(sotaInfo.latitude, sotaInfo.longitude);
 
@@ -977,13 +1009,15 @@ bool QSODetailDialog::doValidation()
                                  && !sotaInfo.summitName.isEmpty()
                                  && SOTAGrid.isValid()
                                  && ui->gridEdit->text().toUpper() != SOTAGrid.getGrid().toUpper(),
-                                 tr("Based on SOTA Summit, Grid does not match SOTA Grid - expecting ")+ "<b> " + SOTAGrid.getGrid() + "</b>");
+                                 tr("Based on SOTA Summit, Grid does not match SOTA Grid - expecting ")+ "<b> " + SOTAGrid.getGrid() + "</b>",
+                                 ui->gridEdit, SOTAGrid.getGrid());
 
     allValid &= highlightInvalid(ui->qthLabel,
                                  potaInfo.reference.toUpper() == ui->potaEdit->text().toUpper()
                                  && !potaInfo.name.isEmpty()
                                  && ui->qthEdit->text().toUpper() != potaInfo.name.toUpper(),
-                                 tr("Based on POTA record, QTH does not match POTA Name - expecting ")+ "<b> " + potaInfo.name + "</b>");
+                                 tr("Based on POTA record, QTH does not match POTA Name - expecting ")+ "<b> " + potaInfo.name + "</b>",
+                                 ui->qthEdit, potaInfo.name);
 
     Gridsquare POTAGrid(potaInfo.grid);
 
@@ -992,7 +1026,8 @@ bool QSODetailDialog::doValidation()
                                  && !potaInfo.name.isEmpty()
                                  && POTAGrid.isValid()
                                  && ui->gridEdit->text().toUpper() != POTAGrid.getGrid().toUpper(),
-                                 tr("Based on POTA record, Grid does not match POTA Grid - expecting ")+ "<b> " + POTAGrid.getGrid() + "</b>");
+                                 tr("Based on POTA record, Grid does not match POTA Grid - expecting ")+ "<b> " + POTAGrid.getGrid() + "</b>",
+                                 ui->gridEdit, POTAGrid.getGrid());
 
     SOTAEntity mySotaInfo;
     POTAEntity myPotaInfo;
@@ -1011,7 +1046,8 @@ bool QSODetailDialog::doValidation()
                                  mySotaInfo.summitCode.toUpper() == ui->mySOTAEdit->text().toUpper()
                                  && !mySotaInfo.summitName.isEmpty()
                                  && ui->myQTHEdit->text().toUpper() != mySotaInfo.summitName.toUpper(),
-                                 tr("Based on SOTA Summit, my QTH does not match SOTA Summit Name - expecting ")+ "<b> " + mySotaInfo.summitName + "</b>");
+                                 tr("Based on SOTA Summit, my QTH does not match SOTA Summit Name - expecting ")+ "<b> " + mySotaInfo.summitName + "</b>",
+                                 ui->myQTHEdit, mySotaInfo.summitName);
 
     Gridsquare MySOTAGrid(mySotaInfo.latitude, mySotaInfo.longitude);
 
@@ -1020,13 +1056,15 @@ bool QSODetailDialog::doValidation()
                                  && !mySotaInfo.summitName.isEmpty()
                                  && MySOTAGrid.isValid()
                                  && ui->myGridEdit->text().toUpper() != MySOTAGrid.getGrid().toUpper(),
-                                 tr("Based on SOTA Summit, my Grid does not match SOTA Grid - expecting ")+ "<b> " + MySOTAGrid.getGrid() + "</b>");
+                                 tr("Based on SOTA Summit, my Grid does not match SOTA Grid - expecting ")+ "<b> " + MySOTAGrid.getGrid() + "</b>",
+                                 ui->myGridEdit, MySOTAGrid.getGrid());
 
     allValid &= highlightInvalid(ui->myQTHLabel,
                                  myPotaInfo.reference.toUpper() == ui->myPOTAEdit->text().toUpper()
                                  && !myPotaInfo.name.isEmpty()
                                  && ui->myQTHEdit->text().toUpper() != myPotaInfo.name.toUpper(),
-                                 tr("Based on POTA record, my QTH does not match POTA Name - expecting ")+ "<b> " + myPotaInfo.name + "</b>");
+                                 tr("Based on POTA record, my QTH does not match POTA Name - expecting ")+ "<b> " + myPotaInfo.name + "</b>",
+                                 ui->myQTHEdit, myPotaInfo.name);
 
     Gridsquare myPOTAGrid(myPotaInfo.grid);
 
@@ -1035,7 +1073,8 @@ bool QSODetailDialog::doValidation()
                                  && !myPotaInfo.name.isEmpty()
                                  && myPOTAGrid.isValid()
                                  && ui->myGridEdit->text().toUpper() != myPOTAGrid.getGrid().toUpper(),
-                                 tr("Based on POTA record, my Grid does not match POTA Grid - expecting ")+ "<b> " + myPOTAGrid.getGrid() + "</b>");
+                                 tr("Based on POTA record, my Grid does not match POTA Grid - expecting ")+ "<b> " + myPOTAGrid.getGrid() + "</b>",
+                                 ui->myGridEdit, myPOTAGrid.getGrid());
 
     allValid &= highlightInvalid(ui->lotwHeaderLabel,
                                  ui->qslLotwSentDateEdit->date() != ui->qslLotwSentDateEdit->minimumDate()
@@ -1357,6 +1396,94 @@ bool QSODetailDialog::highlightInvalid(QLabel *labelWidget, bool cond, const QSt
 
     labelWidget->setToolTip(currToolTip);
     return !cond;
+}
+
+bool QSODetailDialog::highlightInvalid(QLabel *labelWidget, bool cond, const QString &toolTip,
+                                       QWidget *targetWidget, const QVariant &expectedValue)
+{
+    FCT_IDENTIFICATION;
+
+    qCDebug(function_parameters) << labelWidget->objectName()
+                                 << cond
+                                 << toolTip
+                                 << (targetWidget ? targetWidget->objectName() : "null")
+                                 << expectedValue;
+
+    if ( cond && targetWidget )
+    {
+        ValidationFix fix;
+        fix.targetWidget = targetWidget;
+        fix.expectedValue = expectedValue;
+        validationFixes[labelWidget].append(fix);
+    }
+
+    bool result = highlightInvalid(labelWidget, cond, toolTip);
+
+    /* Update cursor and tooltip hint for fixable labels */
+    if ( !validationFixes.value(labelWidget).isEmpty() )
+    {
+        labelWidget->setCursor(Qt::PointingHandCursor);
+
+        QString tip = labelWidget->toolTip();
+        if ( !tip.isEmpty() && !tip.contains(tr("(double-click to apply)")) )
+        {
+            tip.append(tr("<i>(double-click to apply)</i><br>"));
+            labelWidget->setToolTip(tip);
+        }
+    }
+
+    return result;
+}
+
+bool QSODetailDialog::eventFilter(QObject *watched, QEvent *event)
+{
+    FCT_IDENTIFICATION;
+
+    if ( event->type() == QEvent::MouseButtonDblClick )
+    {
+        QLabel *label = qobject_cast<QLabel*>(watched);
+
+        if ( label && inEditMode && validationFixes.contains(label) )
+        {
+            qCDebug(runtime) << "Double-click fix applied on" << label->objectName();
+            applyValidationFixes(label);
+            return true;
+        }
+    }
+
+    return QDialog::eventFilter(watched, event);
+}
+
+void QSODetailDialog::applyValidationFixes(QLabel *label)
+{
+    FCT_IDENTIFICATION;
+
+    qCDebug(function_parameters) << label->objectName();
+
+    const QList<ValidationFix> &fixes = validationFixes.value(label);
+
+    for ( const ValidationFix &fix : fixes )
+    {
+        if ( !fix.targetWidget )
+        {
+            continue;
+        }
+
+        if ( QLineEdit *line = qobject_cast<QLineEdit*>(fix.targetWidget) )
+        {
+            line->setText(fix.expectedValue.toString());
+        }
+        else if ( QComboBox *combo = qobject_cast<QComboBox*>(fix.targetWidget) )
+        {
+            combo->setCurrentText(fix.expectedValue.toString());
+        }
+        else if ( QDoubleSpinBox *spinBox = qobject_cast<QDoubleSpinBox*>(fix.targetWidget) )
+        {
+            spinBox->setValue(fix.expectedValue.toDouble());
+        }
+    }
+
+    doValidation();
 }
 
 void QSODetailDialog::blockMappedWidgetSignals(bool inBlocking)
