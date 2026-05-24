@@ -15,6 +15,7 @@ For documentation, installation instructions, features, and support please refer
 - Better QRZ.com upload errors: the failure popup now identifies the failing QSO (callsign, UTC date/time, band) and includes the `EXTENDED` field from QRZ's API response, which carries the real cause (e.g. "freq_to_band: cannot determine band from 13.785") instead of QRZ's generic "Internal Error" message
 - Fix theme not persisting when a layout profile is active: picking Dark/Light/Native from the theme button now also stores the choice in the currently selected layout profile, so the theme is restored on next start
 - Fix dock visibility / layout not persisting when a layout profile is active: closing QLog now writes the current geometry, dock state, theme and tab-collapse state into the active layout profile, so e.g. opening the WSJT-X dock survives a restart
+- Eliminate flash of light theme at startup when Dark theme is configured: the theme is now applied synchronously instead of inside the 500ms `QTBUG-46620` workaround timer, so the window paints dark from the first frame
 
 ---
 

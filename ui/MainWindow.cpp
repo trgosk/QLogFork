@@ -1366,14 +1366,18 @@ void MainWindow::setLayoutGeometry()
 #endif
     restoreGeometry(newGeometry);
 
+    // Apply theme up-front to avoid a 500ms flash of the native (usually light)
+    // palette before the timer below fires. Only restoreState() actually needs
+    // the deferral (QTBUG-46620), the palette/stylesheet swap can happen now.
+    this->themeInit(isFusionStyle ? darkMode : 0);
+
     // workaround for QTBUG-46620
     QTimer* nt = new QTimer(this);
     nt->setSingleShot(true);
     nt->setInterval(500);
-    connect(nt, &QTimer::timeout, this, [this, darkMode, newState]()
+    connect(nt, &QTimer::timeout, this, [this, newState]()
     {
         restoreState(newState);
-        this->themeInit(isFusionStyle ? darkMode : 0);
         connect(MainLayoutProfilesManager::instance(), &MainLayoutProfilesManager::profileChanged,
                 this, &MainWindow::setSimplyLayoutGeometry);
     });
@@ -1407,6 +1411,10 @@ void MainWindow::setSimplyLayoutGeometry()
         restoreGeometry(layoutProfile.mainGeometry);
         QApplication::processEvents();
 
+        // Apply the layout-profile's theme immediately to avoid a flash of the
+        // previous palette while the QTBUG-46620 timer below is still pending.
+        this->themeInit(isFusionStyle ? layoutProfile.darkMode : 0);
+
         // workaround for QTBUG-46620
         QTimer* nt = new QTimer(this);
         nt->setSingleShot(true);
@@ -1414,7 +1422,6 @@ void MainWindow::setSimplyLayoutGeometry()
         connect(nt, &QTimer::timeout, this, [this, layoutProfile]()
         {
             restoreState(layoutProfile.mainState);
-            this->themeInit(isFusionStyle ? layoutProfile.darkMode : 0);            
         });
         nt->connect(nt, &QTimer::timeout, nt, &QTimer::deleteLater);
         nt->start();
