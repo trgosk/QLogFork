@@ -531,6 +531,11 @@ void MainWindow::closeEvent(QCloseEvent* event)
     LogParam::setMainWindowGeometry(saveGeometry());
     LogParam::setMainWindowState(saveState());
 
+    // Mirror geometry/state/theme/tabs into the active layout profile.
+    // setLayoutGeometry() reads from the layout profile when one is active,
+    // so without this the docks/visibility revert on every restart.
+    saveProfileLayoutGeometry();
+
     if ( stats )
     {
         stats->close();
