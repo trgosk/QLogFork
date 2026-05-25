@@ -16,6 +16,7 @@ For documentation, installation instructions, features, and support please refer
 - Fix theme not persisting when a layout profile is active: picking Dark/Light/Native from the theme button now also stores the choice in the currently selected layout profile, so the theme is restored on next start
 - Fix dock visibility / layout not persisting when a layout profile is active: closing QLog now writes the current geometry, dock state, theme and tab-collapse state into the active layout profile, so e.g. opening the WSJT-X dock survives a restart
 - Eliminate flash of light theme at startup when Dark theme is configured: the theme is now applied synchronously instead of inside the 500ms `QTBUG-46620` workaround timer, so the window paints dark from the first frame
+- **QSO Detail dialog: add "QSL Received via" dropdown** — upstream's editor only exposes `qsl_sent_via` (Bureau/Direct/Electronic) but never the matching `qsl_rcvd_via`, even though the column already exists in the DB schema (`B/D/E/M` per `migration_002.sql`) and the ADIF reader/writer roundtrips it. This fork adds a paired combobox so cards received electronically (email, eQSL emit, LoTW emit) can be marked as such.
 
 ---
 

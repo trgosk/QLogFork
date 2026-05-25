@@ -250,6 +250,15 @@ QSODetailDialog::QSODetailDialog(const QSqlRecord &qso,
     ui->qslSentViaBox->addItem(tr("Direct"), QVariant("D"));
     ui->qslSentViaBox->addItem(tr("Electronic"), QVariant("E"));
 
+    /* Mirror of qslSentViaBox for the receive direction. ADIF QSL_RCVD_VIA
+     * follows the same enum (B/D/E/M); the DB CHECK constraint accepts those
+     * exact values. "Electronic" covers email, eQSL, LoTW emit, etc.
+     */
+    ui->qslRcvdViaBox->addItem("", QVariant(""));
+    ui->qslRcvdViaBox->addItem(tr("Bureau"), QVariant("B"));
+    ui->qslRcvdViaBox->addItem(tr("Direct"), QVariant("D"));
+    ui->qslRcvdViaBox->addItem(tr("Electronic"), QVariant("E"));
+
     /* Propagation */
     QStringListModel* propagationModeModel = new QStringListModel(Data::instance()->propagationModesList(), this);
     ui->propagationModeEdit->setModel(propagationModeModel);
@@ -389,6 +398,7 @@ QSODetailDialog::QSODetailDialog(const QSqlRecord &qso,
     mapper->addMapping(ui->qslReceivedMsgEdit, LogbookModel::COLUMN_QSLMSG_RCVD, "text");
     mapper->addMapping(ui->qslSentMsgEdit, LogbookModel::COLUMN_QSLMSG_INTL, "text");
     mapper->addMapping(ui->qslSentViaBox, LogbookModel::COLUMN_QSL_SENT_VIA);
+    mapper->addMapping(ui->qslRcvdViaBox, LogbookModel::COLUMN_QSL_RCVD_VIA);
     mapper->addMapping(ui->qslViaEdit, LogbookModel::COLUMN_QSL_VIA);
     mapper->addMapping(ui->qslPaperReceiveDateEdit, LogbookModel::COLUMN_QSL_RCVD_DATE);
     mapper->addMapping(ui->qslPaperSentDateEdit, LogbookModel::COLUMN_QSL_SENT_DATE);
@@ -1781,6 +1791,7 @@ void QSOEditMapperDelegate::setEditorData(QWidget *editor,
 {
     if ( editor->objectName() == "qslSentBox"
          || editor->objectName() == "qslSentViaBox"
+         || editor->objectName() == "qslRcvdViaBox"
          || editor->objectName() == "qslPaperSentStatusBox"
          || editor->objectName() == "qslPaperReceiveStatusBox"
          || editor->objectName() == "qslLotwSentStatusBox"
@@ -1911,6 +1922,7 @@ void QSOEditMapperDelegate::setModelData(QWidget *editor,
     /* ALL combos with Data */
     if ( editor->objectName() == "qslSentBox"
          || editor->objectName() == "qslSentViaBox"
+         || editor->objectName() == "qslRcvdViaBox"
          || editor->objectName() == "qslPaperSentStatusBox"
          || editor->objectName() == "qslPaperReceiveStatusBox"
          || editor->objectName() == "qslLotwSentStatusBox"
