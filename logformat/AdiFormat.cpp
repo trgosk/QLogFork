@@ -419,7 +419,31 @@ void AdiFormat::contactFields2SQLRecord(QMap<QString, QVariant> &contact, QSqlRe
     record.setValue("qrzcom_qso_download_status",parseDownloadStatus(contact.take("qrzcom_qso_download_status").toString()));
     record.setValue("qrzcom_qso_upload_date",parseDate(contact.take("qrzcom_qso_upload_date").toString()));
     record.setValue("qrzcom_qso_upload_status",parseUploadStatus(contact.take("qrzcom_qso_upload_status").toString()));
-    record.setValue("qsl_rcvd_via",contact.take("qsl_rcvd_via").toString().toUpper());
+    // QSL_RCVD_VIA merge policy — qlog-extra fork:
+    //
+    // Upstream blindly overwrites qsl_rcvd_via with whatever the imported
+    // ADIF carries. LoTW's confirmation ADIF always says QSL_RCVD_VIA=E
+    // (Electronic), which clobbers a Bureau/Direct/Manager marker the user
+    // set previously when an actual paper card arrived.
+    //
+    // qsl_rcvd_via is a single-value column so we have to pick ONE channel
+    // to record there. The dedicated lotw_qsl_rcvd / eqsl_qsl_rcvd /
+    // dcl_qsl_rcvd columns already carry the electronic confirmation, so
+    // 'E' is redundant when one of those is set. Paper, by contrast, has
+    // NO dedicated column — losing B/D/M means we forget the card arrived.
+    //
+    // Policy: don't downgrade B/D/M to E. Honour any other transition.
+    {
+        const QString incomingVia = contact.take("qsl_rcvd_via").toString().toUpper();
+        const QString existingVia = record.value("qsl_rcvd_via").toString().toUpper();
+        const bool existingIsPaper = (existingVia == "B"
+                                       || existingVia == "D"
+                                       || existingVia == "M");
+        if ( !( incomingVia == "E" && existingIsPaper ) )
+        {
+            record.setValue("qsl_rcvd_via", incomingVia);
+        }
+    }
     record.setValue("qsl_sent_via",contact.take("qsl_sent_via").toString().toUpper());
     record.setValue("qsl_via",contact.take("qsl_via"));
     record.setValue("qso_complete",contact.take("qso_complete").toString().toUpper());
