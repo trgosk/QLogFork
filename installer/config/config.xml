@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Installer>
     <Name>QLogFork</Name>
-    <Version>0.51.0</Version>
+    <Version>0.51.1</Version>
     <Title>QLogFork</Title>
     <Publisher>trgosk</Publisher>
     <StartMenuDir>QLogFork</StartMenuDir>
